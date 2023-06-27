@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -92,6 +93,21 @@ def test_gpt2_prompt_handler():
         "model_max_length": 20,
         "new_prompt_length": 10,
     }
+
+
+@pytest.mark.integration
+def test_gpt2_prompt_handler_prompt_longer_than_model_max_length(caplog):
+    caplog.set_level(logging.WARNING)
+    handler = DefaultPromptHandler(model_name_or_path="gpt2", model_max_length=20, max_length=10)
+
+    assert handler("This is a test " * 10) == {
+        "max_length": 10,
+        "model_max_length": 20,
+        "new_prompt_length": 10,
+        "prompt_length": 41,
+        "resized_prompt": "This is a test This is a test This is",
+    }
+    assert "Token indices sequence length is" in caplog.text
 
 
 @pytest.mark.integration
