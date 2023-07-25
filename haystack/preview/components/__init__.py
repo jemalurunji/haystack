@@ -1,2 +1,4 @@
 from haystack.preview.components.audio.whisper_local import LocalWhisperTranscriber
 from haystack.preview.components.audio.whisper_remote import RemoteWhisperTranscriber
+from haystack.preview.components.retrievers.memory import MemoryRetriever
+from haystack.preview.components.writers.document_writer import DocumentWriter
