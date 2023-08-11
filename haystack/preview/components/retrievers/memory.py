@@ -1,7 +1,9 @@
 from typing import Dict, List, Any, Optional
 
+from canals.errors import ComponentDeserializationError
+
 from haystack.preview import component, Document
-from haystack.preview.document_stores import MemoryDocumentStore, StoreAwareMixin
+from haystack.preview.document_stores import store, MemoryDocumentStore, StoreAwareMixin
 
 
 @component
@@ -30,6 +32,36 @@ class MemoryRetriever(StoreAwareMixin):
         self.filters = filters
         self.top_k = top_k
         self.scale_score = scale_score
+
+    def to_dict(self) -> Dict[str, Any]:
+        store = None
+        if self._store:
+            store = self._store.to_dict()
+        if self._store_name:
+            store = self._store_name
+        return {
+            "hash": id(self),
+            "type": self.__class__.__name__,
+            "store": store,
+            "init_parameters": {"filters": self.filters, "top_k": self.top_k, "scale_score": self.scale_score},
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MemoryRetriever":
+        if "type" not in data:
+            raise ComponentDeserializationError("Missing 'type' in component serialization data")
+        if data["type"] != cls.__name__:
+            raise ComponentDeserializationError(f"Component '{data['type']}' can't be deserialized as '{cls.__name__}'")
+        init_params = data["init_parameters"]
+        comp = cls(**init_params)
+        if isinstance(data["store"], dict):
+            # Deserialises the store only if it's been deserialised with the component.
+            # If it's not a dictionary it must be a string, that means the component
+            # is being deserialised inside a Pipeline, the Pipeline will take care
+            # of setting the proper store to this component.
+            store_type = data["store"]["type"]
+            comp.store = store.registry[store_type].from_dict(data["store"])
+        return comp
 
     @component.output_types(documents=List[List[Document]])
     def run(
